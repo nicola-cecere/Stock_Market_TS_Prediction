@@ -1,5 +1,6 @@
 import pandas as pd
 import os
+from typing import List, Tuple
 
 #GENERETE UNIQUE CSV
 
@@ -59,3 +60,38 @@ def create_number_rows_by_year(df):
     ticker_year_distribution = df.groupby(['Ticker', 'Year']).size().unstack().fillna(0)
 
     ticker_year_distribution.to_csv('data/sp500/numberrows.csv')
+
+def remove_outliers_in_batches(df: pd.DataFrame, columns: List[str], coefficient: int) -> pd.DataFrame:
+    # Copy of df
+    new_df = df.copy()
+
+    # Add columns to the new dataframe to flag outliers
+    for col in columns:
+        new_df[col + '_Outlier'] = False
+
+    # Process each ticker separately
+    for ticker in new_df['Ticker'].unique():
+        ticker_data = new_df[new_df['Ticker'] == ticker]
+        ticker_data = ticker_data.sort_values(by='Date')
+
+        # Get the range of years
+        start_year = ticker_data['Date'].dt.year.min()
+        end_year = ticker_data['Date'].dt.year.max()
+
+        # Process in batches of up to 10 years
+        for start in range(start_year, end_year, 10):
+            end = min(start + 10, end_year + 1)
+            batch = ticker_data[(ticker_data['Date'].dt.year >= start) & (ticker_data['Date'].dt.year < end)]
+
+            # Compute the mean and std dev for the batch
+            stats = batch[columns].agg(['mean', 'std'])
+
+            # Find and flag outliers in the batch
+            for col in columns:
+                mean = stats[col]['mean']
+                std = stats[col]['std']
+                outlier_condition = abs(batch[col] - mean) > (coefficient * std)
+                batch_indices = batch[outlier_condition].index
+                new_df.loc[batch_indices, col + '_Outlier'] = True
+
+    return new_df
