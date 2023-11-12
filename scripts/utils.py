@@ -124,14 +124,15 @@ def remove_outliers_in_batches(
 
 def split_date(df: pd.DataFrame) -> pd.DataFrame:
     df["Year"] = df["Date"].dt.year
-    df["Month"] = df["Date"].dt.month
-    df["Day"] = df["Date"].dt.day
+    df["Month"] = df["Date"].dt.month.astype("Int8")
+    df["Day"] = df["Date"].dt.day.astype("Int8")
     return df
 
 
 def encode_ticker(df: pd.DataFrame) -> pd.DataFrame:
     encoder = ce.BinaryEncoder(cols=["Ticker"])
     df_binary_encoded = encoder.fit_transform(df["Ticker"])
+    df_binary_encoded = df_binary_encoded.astype("Int8")
     df = df.join(df_binary_encoded)
     df.drop("Ticker", axis=1, inplace=True)
     return df
@@ -153,8 +154,7 @@ def add_seasonality(df: pd.DataFrame) -> pd.DataFrame:
 
     encoded_df = pd.DataFrame(
         encoded_data, columns=encoder.get_feature_names_out(["Month_Category"])
-    )
-    encoded_df.drop("Month_Category_Normal", axis=1, inplace=True)
+    ).astype("Int8")
 
     df_final = pd.concat([df, encoded_df], axis=1)
     df_final.drop(["Month_Category"], axis=1, inplace=True)
