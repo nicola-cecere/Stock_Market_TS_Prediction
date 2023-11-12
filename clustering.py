@@ -13,6 +13,9 @@ from sklearn.metrics import calinski_harabasz_score, davies_bouldin_score
 from scripts.utils import add_seasonality, encode_ticker, split_date
 
 warnings.filterwarnings(action="ignore", category=FutureWarning, module="sklearn.*")
+warnings.filterwarnings(
+    action="ignore", category=FutureWarning, module="category_encoders.*"
+)
 
 
 def objective(trial: optuna.Trial, X_train: pd.DataFrame) -> Tuple[float, float]:
