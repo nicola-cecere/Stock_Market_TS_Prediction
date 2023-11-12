@@ -3,5 +3,8 @@ numpy
 matplotlib
 seaborn
 scipy
-sklearn
+scikit-learn
 optuna
+dotenv
+hdbscan
+category_encoders

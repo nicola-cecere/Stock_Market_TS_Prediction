@@ -1,9 +1,9 @@
 import os
 from typing import List, Tuple
 
+import category_encoders as ce
 import pandas as pd
-
-# GENERETE UNIQUE CSV
+from sklearn.preprocessing import OneHotEncoder
 
 
 def add_ticker_and_load_csv(file_path):
@@ -78,39 +78,84 @@ def create_number_rows_by_year(df):
     # Count the number of rows for each ticker per year
     ticker_year_distribution = df.groupby(["Ticker", "Year"]).size().unstack().fillna(0)
 
-    ticker_year_distribution.to_csv('data/sp500/numberrows.csv')
+    ticker_year_distribution.to_csv("data/sp500/numberrows.csv")
 
-def remove_outliers_in_batches(df: pd.DataFrame, columns: List[str], coefficient: int) -> pd.DataFrame:
+
+def remove_outliers_in_batches(
+    df: pd.DataFrame, columns: List[str], coefficient: int
+) -> pd.DataFrame:
     # Copy of df
     new_df = df.copy()
 
     # Add columns to the new dataframe to flag outliers
     for col in columns:
-        new_df[col + '_Outlier'] = False
+        new_df[col + "_Outlier"] = False
 
     # Process each ticker separately
-    for ticker in new_df['Ticker'].unique():
-        ticker_data = new_df[new_df['Ticker'] == ticker]
-        ticker_data = ticker_data.sort_values(by='Date')
+    for ticker in new_df["Ticker"].unique():
+        ticker_data = new_df[new_df["Ticker"] == ticker]
+        ticker_data = ticker_data.sort_values(by="Date")
 
         # Get the range of years
-        start_year = ticker_data['Date'].dt.year.min()
-        end_year = ticker_data['Date'].dt.year.max()
+        start_year = ticker_data["Date"].dt.year.min()
+        end_year = ticker_data["Date"].dt.year.max()
 
         # Process in batches of up to 10 years
         for start in range(start_year, end_year, 10):
             end = min(start + 10, end_year + 1)
-            batch = ticker_data[(ticker_data['Date'].dt.year >= start) & (ticker_data['Date'].dt.year < end)]
+            batch = ticker_data[
+                (ticker_data["Date"].dt.year >= start)
+                & (ticker_data["Date"].dt.year < end)
+            ]
 
             # Compute the mean and std dev for the batch
-            stats = batch[columns].agg(['mean', 'std'])
+            stats = batch[columns].agg(["mean", "std"])
 
             # Find and flag outliers in the batch
             for col in columns:
-                mean = stats[col]['mean']
-                std = stats[col]['std']
+                mean = stats[col]["mean"]
+                std = stats[col]["std"]
                 outlier_condition = abs(batch[col] - mean) > (coefficient * std)
                 batch_indices = batch[outlier_condition].index
-                new_df.loc[batch_indices, col + '_Outlier'] = True
+                new_df.loc[batch_indices, col + "_Outlier"] = True
 
     return new_df
+
+
+def split_date(df: pd.DataFrame) -> pd.DataFrame:
+    df["Year"] = df["Date"].dt.year
+    df["Month"] = df["Date"].dt.month
+    df["Day"] = df["Date"].dt.day
+    return df
+
+
+def encode_ticker(df: pd.DataFrame) -> pd.DataFrame:
+    encoder = ce.BinaryEncoder(cols=["Ticker"])
+    df_binary_encoded = encoder.fit_transform(df["Ticker"])
+    df = df.join(df_binary_encoded)
+    df.drop("Ticker", axis=1, inplace=True)
+    return df
+
+
+def add_seasonality(df: pd.DataFrame) -> pd.DataFrame:
+    def categorize_month(month):
+        if month in [4, 5, 7, 8, 9]:
+            return "Bullish"
+        elif month in [1, 10, 11, 12]:
+            return "Bearish"
+        else:
+            return "Normal"
+
+    df["Month_Category"] = df["Month"].apply(categorize_month)
+
+    encoder = OneHotEncoder()
+    encoded_data = encoder.fit_transform(df[["Month_Category"]]).toarray()
+
+    encoded_df = pd.DataFrame(
+        encoded_data, columns=encoder.get_feature_names_out(["Month_Category"])
+    )
+    encoded_df.drop("Month_Category_Normal", axis=1, inplace=True)
+
+    df_final = pd.concat([df, encoded_df], axis=1)
+    df_final.drop(["Month_Category"], axis=1, inplace=True)
+    return df_final
