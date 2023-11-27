@@ -8,3 +8,4 @@ optuna
 dotenv
 hdbscan
 category_encoders
+tensorflow

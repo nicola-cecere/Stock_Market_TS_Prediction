@@ -167,6 +167,16 @@ def add_seasonality(df: pd.DataFrame) -> pd.DataFrame:
     df_final.drop(["Month_Category"], axis=1, inplace=True)
     return df_final
 
+def split_data_frame(df, train_frac=0.7, val_frac=0.2):
+
+    n = len(df)
+    train_end = int(n * train_frac)
+    val_end = int(n * (train_frac + val_frac))
+    train_df = df[:train_end]
+    val_df = df[train_end:val_end]
+    test_df = df[val_end:]
+    return train_df, val_df, test_df
+
 
 class DataWindow():
 
