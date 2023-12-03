@@ -10,6 +10,8 @@ from tensorflow.keras.optimizers.legacy import Adam
 from tensorflow.keras.callbacks import EarlyStopping
 from tensorflow.keras.losses import MeanSquaredError
 from tensorflow.keras.metrics import MeanAbsoluteError
+from fracdiff.sklearn import FracdiffStat
+
 
 
 
@@ -166,6 +168,15 @@ def add_seasonality(df: pd.DataFrame) -> pd.DataFrame:
     df_final = pd.concat([df, encoded_df], axis=1)
     df_final.drop(["Month_Category"], axis=1, inplace=True)
     return df_final
+
+
+def frac_diff_stationarity(train, test):
+    fd = FracdiffStat()
+    fd.fit(train[['Close']].values)
+    # Replace the 'Close' column with the transformed data
+    train['Close'] = fd.transform(train[['Close']].values)
+    test['Close'] = fd.transform(test[['Close']].values)
+    return train, test
 
 def split_data_frame(df, train_frac=0.7, val_frac=0.2):
 
