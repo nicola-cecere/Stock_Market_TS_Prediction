@@ -27,6 +27,37 @@ def add_ticker_and_load_csv(file_path):
     return df
 
 
+def trigonometric_date_encoding(df: pd.DataFrame, column: str = "Date") -> pd.DataFrame:
+    """Encode date as sin and cos of the day of the week from a date object.
+
+    Args:
+        df (pd.DataFrame): The dataframe.
+        column (str, optional): The column name with the date to encode. Defaults to "f_1".
+
+    Returns:
+        pd.DataFrame: The dataframe with the encoded date.
+            The new columns are called sin_date and cos_date.
+            The original column is not dropped.
+    """
+    # Convert the column to datetime
+    df[column] = pd.to_datetime(df[column], format="%d-%m-%Y")
+
+    # Extract the day of the week (0 = Monday, 6 = Sunday)
+    day_of_week = df[column].dt.dayofweek
+
+    # Calculate sin and cos
+    date_sin = np.sin(day_of_week * (2.0 * np.pi / 7.0))
+    date_cos = np.cos(day_of_week * (2.0 * np.pi / 7.0))
+
+    # Create a DataFrame with the new columns
+    encoded_dates = pd.DataFrame({"sin_date": date_sin, "cos_date": date_cos})
+
+    # Concatenate the new columns with the original dataframe
+    result_df = pd.concat([df, encoded_dates], axis=1)
+
+    return result_df
+
+
 def generete_unique_csv(folder_path, output_file_path):
     csv_files = [
         os.path.join(folder_path, file)
