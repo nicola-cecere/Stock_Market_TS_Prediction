@@ -58,6 +58,29 @@ def trigonometric_date_encoding(df: pd.DataFrame, column: str = "Date") -> pd.Da
     return result_df
 
 
+def create_lags(df, n_lags):
+    def fill_with_first_close(lag_df, n_lags):
+        for lag in range(1, n_lags + 1):
+            first_valid_index = lag_df["Close"].first_valid_index()
+            first_valid_value = (
+                lag_df.loc[first_valid_index, "Close"]
+                if first_valid_index is not None
+                else 0
+            )
+            lag_df[f"lag_{lag}"] = lag_df[f"lag_{lag}"].fillna(first_valid_value)
+        return lag_df
+
+    lag_df = df.copy()
+
+    # Now proceed with sorting and creating lag features
+    lag_df.sort_values(by=["Date"], inplace=True)
+
+    for lag in range(1, n_lags + 1):
+        lag_df[f"lag_{lag}"] = lag_df["Close"].shift(lag)
+
+    return fill_with_first_close(lag_df, n_lags)
+
+
 def generete_unique_csv(folder_path, output_file_path):
     csv_files = [
         os.path.join(folder_path, file)
