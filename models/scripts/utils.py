@@ -193,7 +193,7 @@ def add_seasonality(df: pd.DataFrame) -> pd.DataFrame:
 
     encoded_df = pd.DataFrame(
         encoded_data, columns=encoder.get_feature_names_out(["Month_Category"])
-    ).astype("Int8")
+    )
 
     df_final = pd.concat([df, encoded_df], axis=1)
     df_final.drop(["Month_Category"], axis=1, inplace=True)
