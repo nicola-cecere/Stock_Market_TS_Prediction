@@ -247,36 +247,51 @@ def split_data_frame(df, train_frac=0.7, val_frac=0.2):
     test_df = df[val_end:]
     return train_df, val_df, test_df
 
+
+import pandas as pd
+from category_encoders import BinaryEncoder
+
+
 def apply_ma_for_roc(dataframe, ma_window=50, roc_window=20):
     def bin_roc_adjusted(roc_value):
         if pd.isna(roc_value):
-            return 'Unknown'  # Handling NaN values separately
+            return "Unknown"  # Handling NaN values separately
         elif roc_value > 10:
-            return 'Very High Positive'
+            return "Very High Positive"
         elif roc_value > 5:
-            return 'High Positive'
+            return "High Positive"
         elif roc_value > 1:
-            return 'Low Positive'
+            return "Low Positive"
         elif roc_value > -1:
-            return 'Neutral'
+            return "Neutral"
         elif roc_value > -5:
-            return 'Low Negative'
+            return "Low Negative"
         else:
-            return 'High Negative'
-        
+            return "High Negative"
+
     df = dataframe.copy()
 
     # Calculate the 50-Day Moving Average
-    df['50-Day MA'] = df['Close'].rolling(window=ma_window).mean()
-        
+    df["50-Day MA"] = df["Close"].rolling(window=ma_window).mean()
+
     # Calculate the Rate of Change for the 50-Day Moving Average
-    df['MA Rate of Change'] = df['50-Day MA'].pct_change(periods=roc_window) * 100
-        
+    df["MA Rate of Change"] = df["50-Day MA"].pct_change(periods=roc_window) * 100
+
     # Bin the Rate of Change
-    df['ROC'] = df['MA Rate of Change'].apply(bin_roc_adjusted)
-        
-    # Return the dataframe with only the 'ROC Binned Adjusted' column added
-    return dataframe.join(df[['ROC']])
+    df["ROC"] = df["MA Rate of Change"].apply(bin_roc_adjusted)
+
+    # Use BinaryEncoder to encode the 'ROC' column
+    encoder = BinaryEncoder(cols=["ROC"], drop_invariant=True)
+    df_encoded = encoder.fit_transform(df[["ROC"]])
+
+    # Concatenate the encoded 'ROC' column with the original dataframe
+    df = pd.concat([df, df_encoded], axis=1)
+    df.drop("ROC", axis=1, inplace=True)
+    df.drop("MA Rate of Change", axis=1, inplace=True)
+    df.drop("50-Day MA", axis=1, inplace=True)
+
+    # Return the dataframe with the encoded 'ROC' column added
+    return df
 
 
 class DataWindow:
