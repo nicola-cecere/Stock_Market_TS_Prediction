@@ -6,7 +6,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import tensorflow as tf
-from fracdiff.sklearn import FracdiffStat
+# from fracdiff.sklearn import FracdiffStat
+from numpy.fft import rfft, irfft
 from sklearn.preprocessing import OneHotEncoder
 from tensorflow.keras.callbacks import EarlyStopping
 from tensorflow.keras.losses import MeanSquaredError
@@ -57,6 +58,24 @@ def trigonometric_date_encoding(df: pd.DataFrame, column: str = "Date") -> pd.Da
 
     return result_df
 
+def reduce_frequencies(data, sample_spacing=1):
+
+    # Perform Fourier Transform
+    fourier_transform = rfft(data)
+    frequencies = np.fft.rfftfreq(len(data), d=sample_spacing)
+
+    # Range of Frequencies
+    min_freq = 1 / 365
+    max_freq = 1 / 7
+
+    # Zero out all frequencies that are not within the min_freq and max_freq
+    mask = (frequencies > min_freq) & (frequencies < max_freq)
+    fourier_transform[~mask] = 0
+
+    # Apply Inverse Fourier Transform to get the filtered time series
+    fourier_ts = irfft(fourier_transform)
+
+    return fourier_ts
 
 def create_lags(df, n_lags):
     def fill_with_first_close(lag_df, n_lags):
