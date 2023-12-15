@@ -29,6 +29,15 @@ def add_ticker_and_load_csv(file_path):
 
     return df
 
+def load_csv(ticker):
+    folder_path = "data/sp500/csv/"
+    file_path = f"{folder_path}{ticker}.csv"
+
+    df = pd.read_csv(file_path)
+    df["Date"] = pd.to_datetime(df["Date"], format="%d-%m-%Y")
+
+    return df
+
 
 def trigonometric_date_encoding(df: pd.DataFrame, column: str = "Date") -> pd.DataFrame:
     """Encode date as sin and cos of the day of the week from a date object.
@@ -59,25 +68,6 @@ def trigonometric_date_encoding(df: pd.DataFrame, column: str = "Date") -> pd.Da
     result_df = pd.concat([df, encoded_dates], axis=1)
 
     return result_df
-
-def reduce_frequencies(data, sample_spacing=1):
-
-    # Perform Fourier Transform
-    fourier_transform = rfft(data)
-    frequencies = np.fft.rfftfreq(len(data), d=sample_spacing)
-
-    # Range of Frequencies
-    min_freq = 1 / 365
-    max_freq = 1 / 7
-
-    # Zero out all frequencies that are not within the min_freq and max_freq
-    mask = (frequencies > min_freq) & (frequencies < max_freq)
-    fourier_transform[~mask] = 0
-
-    # Apply Inverse Fourier Transform to get the filtered time series
-    fourier_ts = irfft(fourier_transform)
-
-    return fourier_ts
 
 def create_lags(df, n_lags):
     def fill_with_first_close(lag_df, n_lags):
