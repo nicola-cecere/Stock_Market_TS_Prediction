@@ -3,14 +3,13 @@ import warnings
 from datetime import datetime
 from typing import List, Tuple
 
-import hdbscan  # Import HDBSCAN
+import dbscan  # Import HDBSCAN
 import numpy as np
 import optuna
 import pandas as pd
 from dotenv import load_dotenv
-from sklearn.metrics import calinski_harabasz_score, davies_bouldin_score
-
 from scripts.utils import add_seasonality, encode_ticker, split_date
+from sklearn.metrics import calinski_harabasz_score, davies_bouldin_score
 
 warnings.filterwarnings(action="ignore", category=FutureWarning, module="sklearn.*")
 warnings.filterwarnings(
@@ -51,7 +50,9 @@ if __name__ == "__main__":
     load_dotenv()
     N_TRIALS = int(os.getenv("N_TRIALS", 100))
 
-    df = pd.read_csv("data/sp500/SP500_training.csv")
+    df = pd.read_csv(
+        "/Users/nicolacecere/GitHub/UPM-Master/Stock_Market_TS_Prediction/data/sp500/csv/AAPL.csv"
+    )
     df["Date"] = pd.to_datetime(df["Date"])
     df = df.sort_values(by="Date")
 
