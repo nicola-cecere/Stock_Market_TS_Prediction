@@ -213,9 +213,9 @@ def encode_ticker(df: pd.DataFrame) -> pd.DataFrame:
 
 def add_seasonality(df: pd.DataFrame) -> pd.DataFrame:
     def categorize_month(month):
-        if month in [4, 5, 7, 8, 9]:
+        if month in [8, 9, 11]:
             return "Bullish"
-        elif month in [1, 10, 11, 12]:
+        elif month in [1, 2, 3, 4, 5]:
             return "Bearish"
         else:
             return "Normal"
