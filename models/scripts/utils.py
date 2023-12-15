@@ -6,14 +6,26 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import tensorflow as tf
+from category_encoders import BinaryEncoder
+
 # from fracdiff.sklearn import FracdiffStat
-from numpy.fft import rfft, irfft
+from numpy.fft import irfft, rfft
 from sklearn.preprocessing import OneHotEncoder
 from tensorflow.keras.callbacks import EarlyStopping
 from tensorflow.keras.losses import MeanSquaredError
 from tensorflow.keras.metrics import MeanAbsoluteError
 from tensorflow.keras.optimizers.legacy import Adam
 import warnings
+
+
+def create_sequences(data, n_steps):
+    X, y = [], []
+    for i in range(len(data) - n_steps - 1):
+        end = i + n_steps
+        seq_x, seq_y = data.iloc[i:end, :].values, data.iloc[end]["Close"]
+        X.append(seq_x)
+        y.append(seq_y)
+    return np.array(X), np.array(y)
 
 
 def add_ticker_and_load_csv(file_path):
@@ -27,6 +39,7 @@ def add_ticker_and_load_csv(file_path):
     df.insert(0, "Ticker", ticker)
 
     return df
+
 
 def load_csv(ticker):
     folder_path = "data/sp500/csv/"
@@ -67,6 +80,7 @@ def trigonometric_date_encoding(df: pd.DataFrame, column: str = "Date") -> pd.Da
     result_df = pd.concat([df, encoded_dates], axis=1)
 
     return result_df
+
 
 def create_lags(df, n_lags):
     def fill_with_first_close(lag_df, n_lags):
@@ -258,8 +272,7 @@ def split_data_frame(df, train_frac=0.7, val_frac=0.2):
     return train_df, val_df, test_df
 
 
-
-def apply_moving_average_for_roc(dataframe, ma_type='ema', ma_window=50, roc_window=20):
+def apply_moving_average_for_roc(dataframe, ma_type="ema", ma_window=50, roc_window=20):
     def bin_roc_adjusted(roc_value):
         if pd.isna(roc_value):
             return "Unknown"  # Handling NaN values separately
@@ -278,18 +291,20 @@ def apply_moving_average_for_roc(dataframe, ma_type='ema', ma_window=50, roc_win
 
     df = dataframe.copy()
 
-    if ma_type == 'ma':
+    if ma_type == "ma":
         # Calculate the 50-Day Moving Average
         df["50-Day MA"] = df["Close"].rolling(window=ma_window).mean()
         # Calculate the Rate of Change for the 50-Day Moving Average
         df["Rate of Change"] = df["50-Day MA"].pct_change(periods=roc_window) * 100
-    elif ma_type == 'ema':
+    elif ma_type == "ema":
         # Calculate the 50-Day Exponential Moving Average
         df["50-Day MA"] = df["Close"].ewm(span=ma_window, adjust=False).mean()
         # Calculate the Rate of Change for the 50-Day Exponential Moving Average
         df["Rate of Change"] = df["50-Day MA"].pct_change(periods=roc_window) * 100
     else:
-        raise ValueError("Invalid ma_type. Choose 'ma' for Moving Average or 'ema' for Exponential Moving Average")
+        raise ValueError(
+            "Invalid ma_type. Choose 'ma' for Moving Average or 'ema' for Exponential Moving Average"
+        )
 
     # Bin the Rate of Change
     df["ROC"] = df["Rate of Change"].apply(bin_roc_adjusted)
@@ -306,8 +321,8 @@ def apply_moving_average_for_roc(dataframe, ma_type='ema', ma_window=50, roc_win
     df.drop(columns=["ROC", "Rate of Change", "50-Day MA"], inplace=True)
 
     # Return the dataframe with the encoded 'ROC' column added
-    return df
 
+    return df
 
 
 class DataWindow:
