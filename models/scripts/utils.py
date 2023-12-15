@@ -13,8 +13,7 @@ from tensorflow.keras.callbacks import EarlyStopping
 from tensorflow.keras.losses import MeanSquaredError
 from tensorflow.keras.metrics import MeanAbsoluteError
 from tensorflow.keras.optimizers.legacy import Adam
-from category_encoders import BinaryEncoder
-
+import warnings
 
 
 def add_ticker_and_load_csv(file_path):
@@ -286,9 +285,9 @@ def apply_moving_average_for_roc(dataframe, ma_type='ema', ma_window=50, roc_win
         df["Rate of Change"] = df["50-Day MA"].pct_change(periods=roc_window) * 100
     elif ma_type == 'ema':
         # Calculate the 50-Day Exponential Moving Average
-        df["50-Day EMA"] = df["Close"].ewm(span=ma_window, adjust=False).mean()
+        df["50-Day MA"] = df["Close"].ewm(span=ma_window, adjust=False).mean()
         # Calculate the Rate of Change for the 50-Day Exponential Moving Average
-        df["Rate of Change"] = df["50-Day EMA"].pct_change(periods=roc_window) * 100
+        df["Rate of Change"] = df["50-Day MA"].pct_change(periods=roc_window) * 100
     else:
         raise ValueError("Invalid ma_type. Choose 'ma' for Moving Average or 'ema' for Exponential Moving Average")
 
@@ -296,12 +295,15 @@ def apply_moving_average_for_roc(dataframe, ma_type='ema', ma_window=50, roc_win
     df["ROC"] = df["Rate of Change"].apply(bin_roc_adjusted)
 
     # Use BinaryEncoder to encode the 'ROC' column
-    encoder = BinaryEncoder(cols=["ROC"], drop_invariant=True)
-    df_encoded = encoder.fit_transform(df[["ROC"]])
+    with warnings.catch_warnings():
+        warnings.simplefilter(action='ignore', category=FutureWarning)
+        from category_encoders import BinaryEncoder
+        encoder = BinaryEncoder(cols=["ROC"], drop_invariant=True)
+        df_encoded = encoder.fit_transform(df[["ROC"]])
 
     # Concatenate the encoded 'ROC' column with the original dataframe
     df = pd.concat([df, df_encoded], axis=1)
-    df.drop(columns=["ROC", "Rate of Change", "50-Day MA", "50-Day EMA"], inplace=True)
+    df.drop(columns=["ROC", "Rate of Change", "50-Day MA"], inplace=True)
 
     # Return the dataframe with the encoded 'ROC' column added
     return df
