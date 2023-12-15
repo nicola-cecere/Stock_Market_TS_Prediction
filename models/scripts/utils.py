@@ -13,6 +13,8 @@ from tensorflow.keras.callbacks import EarlyStopping
 from tensorflow.keras.losses import MeanSquaredError
 from tensorflow.keras.metrics import MeanAbsoluteError
 from tensorflow.keras.optimizers.legacy import Adam
+from category_encoders import BinaryEncoder
+
 
 
 def add_ticker_and_load_csv(file_path):
@@ -267,11 +269,8 @@ def split_data_frame(df, train_frac=0.7, val_frac=0.2):
     return train_df, val_df, test_df
 
 
-import pandas as pd
-from category_encoders import BinaryEncoder
 
-
-def apply_ma_for_roc(dataframe, ma_window=50, roc_window=20):
+def apply_moving_average_for_roc(dataframe, ma_type='ema', ma_window=50, roc_window=20):
     def bin_roc_adjusted(roc_value):
         if pd.isna(roc_value):
             return "Unknown"  # Handling NaN values separately
@@ -290,14 +289,21 @@ def apply_ma_for_roc(dataframe, ma_window=50, roc_window=20):
 
     df = dataframe.copy()
 
-    # Calculate the 50-Day Moving Average
-    df["50-Day MA"] = df["Close"].rolling(window=ma_window).mean()
-
-    # Calculate the Rate of Change for the 50-Day Moving Average
-    df["MA Rate of Change"] = df["50-Day MA"].pct_change(periods=roc_window) * 100
+    if ma_type == 'ma':
+        # Calculate the 50-Day Moving Average
+        df["50-Day MA"] = df["Close"].rolling(window=ma_window).mean()
+        # Calculate the Rate of Change for the 50-Day Moving Average
+        df["Rate of Change"] = df["50-Day MA"].pct_change(periods=roc_window) * 100
+    elif ma_type == 'ema':
+        # Calculate the 50-Day Exponential Moving Average
+        df["50-Day EMA"] = df["Close"].ewm(span=ma_window, adjust=False).mean()
+        # Calculate the Rate of Change for the 50-Day Exponential Moving Average
+        df["Rate of Change"] = df["50-Day EMA"].pct_change(periods=roc_window) * 100
+    else:
+        raise ValueError("Invalid ma_type. Choose 'ma' for Moving Average or 'ema' for Exponential Moving Average")
 
     # Bin the Rate of Change
-    df["ROC"] = df["MA Rate of Change"].apply(bin_roc_adjusted)
+    df["ROC"] = df["Rate of Change"].apply(bin_roc_adjusted)
 
     # Use BinaryEncoder to encode the 'ROC' column
     encoder = BinaryEncoder(cols=["ROC"], drop_invariant=True)
@@ -305,12 +311,11 @@ def apply_ma_for_roc(dataframe, ma_window=50, roc_window=20):
 
     # Concatenate the encoded 'ROC' column with the original dataframe
     df = pd.concat([df, df_encoded], axis=1)
-    df.drop("ROC", axis=1, inplace=True)
-    df.drop("MA Rate of Change", axis=1, inplace=True)
-    df.drop("50-Day MA", axis=1, inplace=True)
+    df.drop(columns=["ROC", "Rate of Change", "50-Day MA", "50-Day EMA"], inplace=True)
 
     # Return the dataframe with the encoded 'ROC' column added
     return df
+
 
 
 class DataWindow:
